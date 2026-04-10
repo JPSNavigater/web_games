@@ -33,7 +33,7 @@ select {
 }
 
 .layout {
-  width: min(900px, calc(100% - 32px));
+  width: min(820px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0 48px;
 }
@@ -78,7 +78,7 @@ select {
 #game {
   display: block;
   width: 100%;
-  max-width: 800px;
+  max-width: 720px;
   height: auto;
   border-radius: 14px;
   border: 2px solid rgba(33, 53, 71, 0.15);
@@ -89,6 +89,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   margin-top: 16px;
   padding: 14px 16px;
@@ -99,6 +100,7 @@ select {
 
 .shop-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
 }

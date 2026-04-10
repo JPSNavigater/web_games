@@ -5,6 +5,7 @@ import bucketheadZombieImageUrl from './assets/buckethead.png'
 import tacoTruckImageUrl from './assets/taco-truck.png'
 import tacoImageUrl from './assets/taco.png'
 import explosionImageUrl from './assets/explosion-new.png'
+import gameBackgroundImageUrl from './assets/game-background-latest.png'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -29,7 +30,7 @@ app.innerHTML = `
           <strong id="wave-value">1</strong>
         </div>
       </div>
-      <canvas id="game" width="800" height="450" aria-label="Tower defense game area"></canvas>
+      <canvas id="game" width="480" height="389" aria-label="Tower defense game area"></canvas>
       <div class="shop-bar">
         <div id="shop-controls" class="shop-controls">
           <button id="buy-tower-button" class="shop-button" type="button">
@@ -53,16 +54,16 @@ app.innerHTML = `
         <p id="shop-message" class="shop-message">Buy a taco truck, then click the grass to place it.</p>
       </div>
       <div class="utility-controls">
-        <button id="cheat-lives-button" class="cheat-button" type="button">
+        <button id="cheat-lives-button" class="cheat-button utility-button" type="button">
           +1000 Lives
         </button>
-        <button id="slow-game-button" class="cheat-button" type="button">
+        <button id="slow-game-button" class="cheat-button utility-button" type="button">
           Slower
         </button>
-        <button id="fast-game-button" class="cheat-button" type="button">
+        <button id="fast-game-button" class="cheat-button utility-button" type="button">
           Faster
         </button>
-        <button id="cheat-gold-button" class="cheat-button" type="button">
+        <button id="cheat-gold-button" class="cheat-button utility-button" type="button">
           +1000 Gold
         </button>
       </div>
@@ -185,44 +186,98 @@ const fastGameButton: HTMLButtonElement = fastGameButtonElement
 const cheatGoldButton: HTMLButtonElement = cheatGoldButtonElement
 const shopMessage: HTMLElement = shopMessageElement
 
-const pathPoints = [
-  { x: 70, y: 85 },
-  { x: 250, y: 85 },
-  { x: 250, y: 170 },
-  { x: 560, y: 170 },
-  { x: 560, y: 285 },
-  { x: 180, y: 285 },
-  { x: 180, y: 365 },
-  { x: 720, y: 365 },
+const defaultPathPoints = [
+  { x: 286, y: 140 },
+  { x: 286, y: 192 },
+  { x: 177, y: 192 },
+  { x: 177, y: 61 },
+  { x: 33, y: 61 },
+  { x: 33, y: 204 },
+  { x: 91, y: 204 },
+  { x: 91, y: 260 },
+  { x: 33, y: 260 },
+  { x: 33, y: 322 },
+  { x: 179, y: 322 },
+  { x: 179, y: 256 },
+  { x: 348, y: 256 },
+  { x: 348, y: 322 },
+  { x: 439, y: 322 },
+  { x: 439, y: 176 },
+  { x: 407, y: 176 },
+  { x: 407, y: 96 },
+  { x: 480, y: 96 },
 ]
+const savedPathStorageKey = 'tower-defense-saved-path'
+
+function clonePathPoints(points: { x: number; y: number }[]) {
+  return points.map((point) => ({ ...point }))
+}
+
+function loadSavedPathPoints() {
+  const savedPath = window.localStorage.getItem(savedPathStorageKey)
+
+  if (!savedPath) {
+    return clonePathPoints(defaultPathPoints)
+  }
+
+  try {
+    const parsedPath = JSON.parse(savedPath)
+
+    if (
+      Array.isArray(parsedPath) &&
+      parsedPath.length >= 2 &&
+      parsedPath.every(
+        (point) =>
+          typeof point?.x === 'number' &&
+          Number.isFinite(point.x) &&
+          typeof point?.y === 'number' &&
+          Number.isFinite(point.y),
+      )
+    ) {
+      return clonePathPoints(parsedPath)
+    }
+  } catch {
+    window.localStorage.removeItem(savedPathStorageKey)
+  }
+
+  return clonePathPoints(defaultPathPoints)
+}
+
+let pathPoints = loadSavedPathPoints()
 const enemyImage = new Image()
 const coneheadEnemyImage = new Image()
 const bucketheadEnemyImage = new Image()
 const tacoTruckImage = new Image()
 const tacoImage = new Image()
 const explosionImage = new Image()
+const gameBackgroundImage = new Image()
 let enemyImageLoaded = false
 let coneheadEnemyImageLoaded = false
 let bucketheadEnemyImageLoaded = false
 let tacoTruckImageLoaded = false
 let tacoImageLoaded = false
 let explosionImageLoaded = false
+let gameBackgroundImageLoaded = false
 const towerCost = 5
-const pathWidth = 56
-const towerRange = 110
+const pathWidth = 26
+const towerRange = 77
 const towerReloadTime = 0.9
+const tacoTruckSpriteWidth = 48.96
+const tacoTruckSpriteHeight = 38.88
+const towerPlacementEdgePadding = 8
+const minimumTowerSpacing = 40
 const tacoDamage = 5
 const tacoSpeed = 280
-const explosionSplashRadius = 50
+const explosionSplashRadius = 30
 const towerUpgradeBaseCost = 1
 const towerDamageUpgradeAmount = 1
-const towerRangeUpgradeAmount = 15
+const towerRangeUpgradeAmount = 8
 const towerSpeedUpgradeAmount = 0.08
 const maximumDamageUpgrades = 5
 const maximumSpeedUpgrades = 5
 const maximumRangeUpgrades = 3
 const minimumTowerReloadTime = 0.25
-const enemySpeed = 120
+const enemySpeed = 85
 const enemyMaxHealth = 40
 const coneheadEnemyHealth = enemyMaxHealth * 2
 const bucketheadEnemyHealth = 200
@@ -303,6 +358,10 @@ tacoImage.onload = () => {
 explosionImage.src = explosionImageUrl
 explosionImage.onload = () => {
   explosionImageLoaded = true
+}
+gameBackgroundImage.src = gameBackgroundImageUrl
+gameBackgroundImage.onload = () => {
+  gameBackgroundImageLoaded = true
 }
 
 const player = {
@@ -583,11 +642,18 @@ function isPointOnPath(pointX: number, pointY: number) {
 }
 
 function isPointInsideBoard(pointX: number, pointY: number) {
-  return pointX > 28 && pointX < canvas.width - 28 && pointY > 28 && pointY < canvas.height - 28
+  return (
+    pointX > tacoTruckSpriteWidth / 2 + towerPlacementEdgePadding &&
+    pointX < canvas.width - tacoTruckSpriteWidth / 2 - towerPlacementEdgePadding &&
+    pointY > tacoTruckSpriteHeight / 2 + towerPlacementEdgePadding &&
+    pointY < canvas.height - tacoTruckSpriteHeight / 2 - towerPlacementEdgePadding
+  )
 }
 
 function isPointTooCloseToTower(pointX: number, pointY: number) {
-  return towers.some((tower) => Math.hypot(pointX - tower.x, pointY - tower.y) < 52)
+  return towers.some(
+    (tower) => Math.hypot(pointX - tower.x, pointY - tower.y) < minimumTowerSpacing,
+  )
 }
 
 function isValidTowerPlacement(pointX: number, pointY: number) {
@@ -600,7 +666,11 @@ function isValidTowerPlacement(pointX: number, pointY: number) {
 
 function getClickedTowerIndex(pointX: number, pointY: number) {
   return towers.findIndex(
-    (tower) => Math.hypot(pointX - tower.x, pointY - tower.y) <= tower.radius,
+    (tower) =>
+      pointX >= tower.x - tacoTruckSpriteWidth / 2 &&
+      pointX <= tower.x + tacoTruckSpriteWidth / 2 &&
+      pointY >= tower.y - tacoTruckSpriteHeight / 2 &&
+      pointY <= tower.y + tacoTruckSpriteHeight / 2,
   )
 }
 
@@ -717,8 +787,8 @@ function updateProjectiles(deltaTime: number) {
       explosions.push({
         x: projectile.x,
         y: projectile.y,
-        radius: 50,
-        maxRadius: 50,
+        radius: 30,
+        maxRadius: 30,
         timeLeft: 1,
         duration: 1,
       })
@@ -791,37 +861,48 @@ function moveEnemies(deltaTime: number) {
   }
 }
 
+function drawBackground() {
+  if (!gameBackgroundImageLoaded) {
+    gameContext.fillStyle = '#f2efe8'
+    gameContext.fillRect(0, 0, canvas.width, canvas.height)
+    return
+  }
+
+  gameContext.drawImage(
+    gameBackgroundImage,
+    0,
+    0,
+    gameBackgroundImage.width,
+    gameBackgroundImage.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  )
+}
+
 function drawScene() {
   gameContext.clearRect(0, 0, canvas.width, canvas.height)
 
-  gameContext.fillStyle = '#f2efe8'
-  gameContext.fillRect(0, 0, canvas.width, canvas.height)
-
-  gameContext.strokeStyle = '#d5c29f'
-  gameContext.lineWidth = 56
-  gameContext.lineCap = 'round'
-  gameContext.lineJoin = 'round'
-  gameContext.beginPath()
-  gameContext.moveTo(pathPoints[0].x, pathPoints[0].y)
-
-  for (let index = 1; index < pathPoints.length; index += 1) {
-    const point = pathPoints[index]
-    gameContext.lineTo(point.x, point.y)
-  }
-
-  gameContext.stroke()
+  drawBackground()
 
   towers.forEach((tower, index) => {
     if (selectedTowerIndex === index) {
-      gameContext.strokeStyle = 'rgba(79, 124, 172, 0.35)'
-      gameContext.lineWidth = 3
+      gameContext.strokeStyle = 'rgba(116, 220, 255, 0.45)'
+      gameContext.lineWidth = 5
       gameContext.beginPath()
       gameContext.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2)
       gameContext.stroke()
     }
 
     if (tacoTruckImageLoaded) {
-      gameContext.drawImage(tacoTruckImage, tower.x - 34, tower.y - 27, 68, 54)
+      gameContext.drawImage(
+        tacoTruckImage,
+        tower.x - tacoTruckSpriteWidth / 2,
+        tower.y - tacoTruckSpriteHeight / 2,
+        tacoTruckSpriteWidth,
+        tacoTruckSpriteHeight,
+      )
     } else {
       gameContext.fillStyle = '#7f5a38'
       gameContext.beginPath()
@@ -837,9 +918,9 @@ function drawScene() {
 
   if (towerPlacementMode) {
     gameContext.strokeStyle = placementPreview.isValid
-      ? 'rgba(255, 255, 255, 0.82)'
-      : 'rgba(201, 74, 74, 0.9)'
-    gameContext.lineWidth = 3
+      ? 'rgba(255, 255, 255, 0.9)'
+      : 'rgba(236, 67, 67, 0.95)'
+    gameContext.lineWidth = 5
     gameContext.beginPath()
     gameContext.arc(placementPreview.x, placementPreview.y, towerRange, 0, Math.PI * 2)
     gameContext.stroke()
@@ -850,10 +931,10 @@ function drawScene() {
     if (tacoTruckImageLoaded) {
       gameContext.drawImage(
         tacoTruckImage,
-        placementPreview.x - 34,
-        placementPreview.y - 27,
-        68,
-        54,
+        placementPreview.x - tacoTruckSpriteWidth / 2,
+        placementPreview.y - tacoTruckSpriteHeight / 2,
+        tacoTruckSpriteWidth,
+        tacoTruckSpriteHeight,
       )
     } else {
       gameContext.fillStyle = '#7f5a38'
@@ -886,11 +967,11 @@ function drawScene() {
 
   for (const enemy of enemies) {
     if (enemy.type === 'buckethead' && bucketheadEnemyImageLoaded) {
-      gameContext.drawImage(bucketheadEnemyImage, enemy.x - 32, enemy.y - 44, 64, 88)
+      gameContext.drawImage(bucketheadEnemyImage, enemy.x - 22.4, enemy.y - 30.8, 44.8, 61.6)
     } else if (enemy.type === 'conehead' && coneheadEnemyImageLoaded) {
-      gameContext.drawImage(coneheadEnemyImage, enemy.x - 30, enemy.y - 44, 60, 88)
+      gameContext.drawImage(coneheadEnemyImage, enemy.x - 21, enemy.y - 30.8, 42, 61.6)
     } else if (enemyImageLoaded) {
-      gameContext.drawImage(enemyImage, enemy.x - 26, enemy.y - 32, 52, 64)
+      gameContext.drawImage(enemyImage, enemy.x - 18.2, enemy.y - 22.4, 36.4, 44.8)
     } else {
       gameContext.fillStyle = '#ca5b4b'
       gameContext.beginPath()

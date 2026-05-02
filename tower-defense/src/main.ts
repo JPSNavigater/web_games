@@ -3,6 +3,9 @@ import zombieImageUrl from './assets/zombie.png'
 import coneheadZombieImageUrl from './assets/heavy-zombie.png'
 import bucketheadZombieImageUrl from './assets/buckethead.png'
 import tacoTruckImageUrl from './assets/taco-truck.png'
+import towerTowerImageUrl from './assets/tower-tower.png'
+import towerTowerProjectileImageUrl from './assets/tower-tower-projectile.png'
+import towerTowerExplosionImageUrl from './assets/tower-tower-explosion.png'
 import tacoImageUrl from './assets/taco.png'
 import explosionImageUrl from './assets/explosion-new.png'
 import gameBackgroundImageUrl from './assets/game-background-latest.png'
@@ -33,8 +36,11 @@ app.innerHTML = `
       <canvas id="game" width="480" height="389" aria-label="Tower defense game area"></canvas>
       <div class="shop-bar">
         <div id="shop-controls" class="shop-controls">
-          <button id="buy-tower-button" class="shop-button" type="button">
-            Buy Taco Truck (5 Gold)
+          <button id="buy-tower-button" class="shop-button buy-tower-button" type="button" aria-label="Buy Taco Truck (5 Gold)">
+            <img class="buy-tower-icon" src="${tacoTruckImageUrl}" alt="" aria-hidden="true" />
+          </button>
+          <button id="buy-spire-button" class="shop-button buy-spire-button" type="button" aria-label="Buy Tower Tower (12 Gold)">
+            <img class="buy-spire-icon" src="${towerTowerImageUrl}" alt="" aria-hidden="true" />
           </button>
         </div>
         <div id="upgrade-controls" class="shop-controls hidden">
@@ -51,21 +57,31 @@ app.innerHTML = `
             Sell Truck
           </button>
         </div>
-        <p id="shop-message" class="shop-message">Buy a taco truck, then click the grass to place it.</p>
+        <div class="shop-info">
+          <p id="shop-message" class="shop-message" aria-live="polite"></p>
+          <p id="tower-stats" class="tower-stats" aria-live="polite"></p>
+        </div>
       </div>
       <div class="utility-controls">
-        <button id="cheat-lives-button" class="cheat-button utility-button" type="button">
-          +1000 Lives
+        <button id="console-toggle-button" class="cheat-button utility-button" type="button">
+          Console
         </button>
-        <button id="slow-game-button" class="cheat-button utility-button" type="button">
-          Slower
-        </button>
-        <button id="fast-game-button" class="cheat-button utility-button" type="button">
-          Faster
-        </button>
-        <button id="cheat-gold-button" class="cheat-button utility-button" type="button">
-          +1000 Gold
-        </button>
+        <div id="dev-console" class="dev-console hidden" aria-label="Developer console">
+          <div class="dev-console-row">
+            <input
+              id="dev-console-input"
+              class="dev-console-input"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="lives = 50"
+            />
+            <button id="dev-console-run-button" class="shop-button dev-console-run" type="button">
+              Run
+            </button>
+          </div>
+          <p id="dev-console-output" class="dev-console-output"></p>
+        </div>
       </div>
     </section>
   </main>
@@ -92,6 +108,8 @@ const shopControlsElement = document.querySelector<HTMLElement>('#shop-controls'
 const upgradeControlsElement = document.querySelector<HTMLElement>('#upgrade-controls')
 const buyTowerButtonElement =
   document.querySelector<HTMLButtonElement>('#buy-tower-button')
+const buySpireButtonElement =
+  document.querySelector<HTMLButtonElement>('#buy-spire-button')
 const upgradeDamageButtonElement =
   document.querySelector<HTMLButtonElement>('#upgrade-damage-button')
 const upgradeRangeButtonElement =
@@ -100,15 +118,17 @@ const upgradeSpeedButtonElement =
   document.querySelector<HTMLButtonElement>('#upgrade-speed-button')
 const sellTowerButtonElement =
   document.querySelector<HTMLButtonElement>('#sell-tower-button')
-const cheatLivesButtonElement =
-  document.querySelector<HTMLButtonElement>('#cheat-lives-button')
-const slowGameButtonElement =
-  document.querySelector<HTMLButtonElement>('#slow-game-button')
-const fastGameButtonElement =
-  document.querySelector<HTMLButtonElement>('#fast-game-button')
-const cheatGoldButtonElement =
-  document.querySelector<HTMLButtonElement>('#cheat-gold-button')
+const consoleToggleButtonElement =
+  document.querySelector<HTMLButtonElement>('#console-toggle-button')
+const devConsoleElement = document.querySelector<HTMLElement>('#dev-console')
+const devConsoleInputElement =
+  document.querySelector<HTMLInputElement>('#dev-console-input')
+const devConsoleRunButtonElement =
+  document.querySelector<HTMLButtonElement>('#dev-console-run-button')
+const devConsoleOutputElement =
+  document.querySelector<HTMLElement>('#dev-console-output')
 const shopMessageElement = document.querySelector<HTMLElement>('#shop-message')
+const towerStatsElement = document.querySelector<HTMLElement>('#tower-stats')
 
 if (!livesValueElement) {
   throw new Error('Lives display not found.')
@@ -124,6 +144,10 @@ if (!waveValueElement) {
 
 if (!buyTowerButtonElement) {
   throw new Error('Buy tower button not found.')
+}
+
+if (!buySpireButtonElement) {
+  throw new Error('Buy spire button not found.')
 }
 
 if (!upgradeDamageButtonElement) {
@@ -142,20 +166,24 @@ if (!sellTowerButtonElement) {
   throw new Error('Sell tower button not found.')
 }
 
-if (!cheatLivesButtonElement) {
-  throw new Error('Cheat lives button not found.')
+if (!consoleToggleButtonElement) {
+  throw new Error('Console toggle button not found.')
 }
 
-if (!slowGameButtonElement) {
-  throw new Error('Slow game button not found.')
+if (!devConsoleElement) {
+  throw new Error('Developer console not found.')
 }
 
-if (!fastGameButtonElement) {
-  throw new Error('Fast game button not found.')
+if (!devConsoleInputElement) {
+  throw new Error('Developer console input not found.')
 }
 
-if (!cheatGoldButtonElement) {
-  throw new Error('Cheat gold button not found.')
+if (!devConsoleRunButtonElement) {
+  throw new Error('Developer console run button not found.')
+}
+
+if (!devConsoleOutputElement) {
+  throw new Error('Developer console output not found.')
 }
 
 if (!shopControlsElement) {
@@ -170,21 +198,28 @@ if (!shopMessageElement) {
   throw new Error('Shop message not found.')
 }
 
+if (!towerStatsElement) {
+  throw new Error('Tower stats display not found.')
+}
+
 const livesDisplay: HTMLElement = livesValueElement
 const goldDisplay: HTMLElement = goldValueElement
 const waveDisplay: HTMLElement = waveValueElement
 const shopControls: HTMLElement = shopControlsElement
 const upgradeControls: HTMLElement = upgradeControlsElement
 const buyTowerButton: HTMLButtonElement = buyTowerButtonElement
+const buySpireButton: HTMLButtonElement = buySpireButtonElement
 const upgradeDamageButton: HTMLButtonElement = upgradeDamageButtonElement
 const upgradeRangeButton: HTMLButtonElement = upgradeRangeButtonElement
 const upgradeSpeedButton: HTMLButtonElement = upgradeSpeedButtonElement
 const sellTowerButton: HTMLButtonElement = sellTowerButtonElement
-const cheatLivesButton: HTMLButtonElement = cheatLivesButtonElement
-const slowGameButton: HTMLButtonElement = slowGameButtonElement
-const fastGameButton: HTMLButtonElement = fastGameButtonElement
-const cheatGoldButton: HTMLButtonElement = cheatGoldButtonElement
+const consoleToggleButton: HTMLButtonElement = consoleToggleButtonElement
+const devConsole: HTMLElement = devConsoleElement
+const devConsoleInput: HTMLInputElement = devConsoleInputElement
+const devConsoleRunButton: HTMLButtonElement = devConsoleRunButtonElement
+const devConsoleOutput: HTMLElement = devConsoleOutputElement
 const shopMessage: HTMLElement = shopMessageElement
+const towerStats: HTMLElement = towerStatsElement
 
 const defaultPathPoints = [
   { x: 286, y: 140 },
@@ -248,6 +283,9 @@ const enemyImage = new Image()
 const coneheadEnemyImage = new Image()
 const bucketheadEnemyImage = new Image()
 const tacoTruckImage = new Image()
+const spireTowerImage = new Image()
+const towerTowerProjectileImage = new Image()
+const towerTowerExplosionImage = new Image()
 const tacoImage = new Image()
 const explosionImage = new Image()
 const gameBackgroundImage = new Image()
@@ -255,27 +293,29 @@ let enemyImageLoaded = false
 let coneheadEnemyImageLoaded = false
 let bucketheadEnemyImageLoaded = false
 let tacoTruckImageLoaded = false
+let spireTowerImageLoaded = false
+let towerTowerProjectileImageLoaded = false
+let towerTowerExplosionImageLoaded = false
 let tacoImageLoaded = false
 let explosionImageLoaded = false
 let gameBackgroundImageLoaded = false
 const towerCost = 5
+const spireTowerCost = 12
 const pathWidth = 26
 const towerRange = 77
 const towerReloadTime = 0.9
 const tacoTruckSpriteWidth = 48.96
 const tacoTruckSpriteHeight = 38.88
+const spireTowerSpriteWidth = 50
+const spireTowerSpriteHeight = 74
 const towerPlacementEdgePadding = 8
 const minimumTowerSpacing = 40
 const tacoDamage = 5
 const tacoSpeed = 280
+const towerTowerProjectileSpeed = 110
 const explosionSplashRadius = 30
-const towerUpgradeBaseCost = 1
-const towerDamageUpgradeAmount = 1
-const towerRangeUpgradeAmount = 8
-const towerSpeedUpgradeAmount = 0.08
-const maximumDamageUpgrades = 5
-const maximumSpeedUpgrades = 5
-const maximumRangeUpgrades = 3
+const towerTowerExplosionDuration = 1.6
+const towerTowerExplosionDrawScale = 3.4
 const minimumTowerReloadTime = 0.25
 const enemySpeed = 85
 const enemyMaxHealth = 40
@@ -289,8 +329,67 @@ const bucketheadEnemyGoldReward = 12
 const waveDelay = 2.4
 const minimumGameSpeed = 0.5
 const maximumGameSpeed = 3
-const gameSpeedStep = 0.25
 const totalWaveCount = 30
+
+type TowerType = 'tacoTruck' | 'spireTower'
+
+type TowerDefinition = {
+  name: string
+  cost: number
+  damage: number
+  range: number
+  reloadTime: number
+  spriteWidth: number
+  spriteHeight: number
+  ariaLabel: string
+  speedMode: 'reload' | 'shotsPerSecond'
+  projectileSpeed: number
+  damageUpgradeAmounts: number[]
+  damageUpgradeCosts: number[]
+  rangeUpgradeAmounts: number[]
+  rangeUpgradeCosts: number[]
+  speedUpgradeAmounts: number[]
+  speedUpgradeCosts: number[]
+}
+
+const towerDefinitions: Record<TowerType, TowerDefinition> = {
+  tacoTruck: {
+    name: 'Taco Truck',
+    cost: towerCost,
+    damage: tacoDamage,
+    range: towerRange,
+    reloadTime: towerReloadTime,
+    spriteWidth: tacoTruckSpriteWidth,
+    spriteHeight: tacoTruckSpriteHeight,
+    ariaLabel: `Buy Taco Truck (${towerCost} Gold)`,
+    speedMode: 'reload',
+    projectileSpeed: tacoSpeed,
+    damageUpgradeAmounts: [1, 1, 1, 1, 1],
+    damageUpgradeCosts: [1, 3, 5, 7, 9],
+    rangeUpgradeAmounts: [8, 8, 8],
+    rangeUpgradeCosts: [1, 3, 5],
+    speedUpgradeAmounts: [0.08, 0.08, 0.08, 0.08, 0.08],
+    speedUpgradeCosts: [1, 3, 5, 7, 9],
+  },
+  spireTower: {
+    name: 'Tower Tower',
+    cost: spireTowerCost,
+    damage: 15,
+    range: 100,
+    reloadTime: 1 / 0.35,
+    spriteWidth: spireTowerSpriteWidth,
+    spriteHeight: spireTowerSpriteHeight,
+    ariaLabel: `Buy Tower Tower (${spireTowerCost} Gold)`,
+    speedMode: 'shotsPerSecond',
+    projectileSpeed: towerTowerProjectileSpeed,
+    damageUpgradeAmounts: [3, 5, 7, 10, 15],
+    damageUpgradeCosts: [5, 8, 15, 20, 25],
+    rangeUpgradeAmounts: [5, 10, 10],
+    rangeUpgradeCosts: [5, 10, 15],
+    speedUpgradeAmounts: [0.08, 0.08, 0.08, 0.08, 0.08],
+    speedUpgradeCosts: [3, 5, 7, 10, 15],
+  },
+}
 
 function randomWholeNumber(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -351,6 +450,18 @@ tacoTruckImage.src = tacoTruckImageUrl
 tacoTruckImage.onload = () => {
   tacoTruckImageLoaded = true
 }
+spireTowerImage.src = towerTowerImageUrl
+spireTowerImage.onload = () => {
+  spireTowerImageLoaded = true
+}
+towerTowerProjectileImage.src = towerTowerProjectileImageUrl
+towerTowerProjectileImage.onload = () => {
+  towerTowerProjectileImageLoaded = true
+}
+towerTowerExplosionImage.src = towerTowerExplosionImageUrl
+towerTowerExplosionImage.onload = () => {
+  towerTowerExplosionImageLoaded = true
+}
 tacoImage.src = tacoImageUrl
 tacoImage.onload = () => {
   tacoImageLoaded = true
@@ -379,6 +490,7 @@ const enemies: {
   maxHealth: number
 }[] = []
 const towers: {
+  type: TowerType
   x: number
   y: number
   radius: number
@@ -397,6 +509,7 @@ const projectiles: {
   speed: number
   damage: number
   targetEnemyId: number
+  sourceTowerType: TowerType
 }[] = []
 const explosions: {
   x: number
@@ -405,8 +518,10 @@ const explosions: {
   maxRadius: number
   timeLeft: number
   duration: number
+  sourceTowerType: TowerType
 }[] = []
 let towerPlacementMode = false
+let towerPlacementType: TowerType = 'tacoTruck'
 let selectedTowerIndex: number | null = null
 let nextEnemyId = 1
 let currentWaveIndex = 0
@@ -414,10 +529,15 @@ let enemiesSpawnedThisWave = 0
 let spawnTimer = 0
 let waveDelayTimer = 0
 let gameSpeedMultiplier = 1
+let devConsoleVisible = false
 const placementPreview = {
   x: pathPoints[0].x,
   y: pathPoints[0].y,
   isValid: false,
+}
+
+function getTowerDefinition(towerType: TowerType) {
+  return towerDefinitions[towerType]
 }
 
 function getCurrentWave() {
@@ -522,71 +642,189 @@ function updateWaveDisplay() {
 }
 
 function updateGameSpeedButtons() {
-  slowGameButton.disabled = gameSpeedMultiplier <= minimumGameSpeed
-  fastGameButton.disabled = gameSpeedMultiplier >= maximumGameSpeed
 }
 
-function getUpgradeCost(level: number) {
-  return towerUpgradeBaseCost + level * 2
+function getTowerStatsText(towerType: TowerType) {
+  const towerDefinition = getTowerDefinition(towerType)
+  return `${towerDefinition.name}: damage ${towerDefinition.damage}, range ${towerDefinition.range}, ${(
+    1 / towerDefinition.reloadTime
+  ).toFixed(2)} shots/sec.`
+}
+
+function getUpgradeOption(
+  towerDefinition: TowerDefinition,
+  track: 'damage' | 'range' | 'speed',
+  level: number,
+) {
+  const amountKey =
+    `${track}UpgradeAmounts` as 'damageUpgradeAmounts' | 'rangeUpgradeAmounts' | 'speedUpgradeAmounts'
+  const costKey =
+    `${track}UpgradeCosts` as 'damageUpgradeCosts' | 'rangeUpgradeCosts' | 'speedUpgradeCosts'
+
+  const amount = towerDefinition[amountKey][level]
+  const cost = towerDefinition[costKey][level]
+
+  return { amount, cost }
 }
 
 function updateShopUi() {
   const selectedTower =
     selectedTowerIndex === null ? null : towers[selectedTowerIndex]
+  const activeTowerDefinition = getTowerDefinition(towerPlacementType)
 
   shopControls.classList.toggle('hidden', selectedTower !== null)
   upgradeControls.classList.toggle('hidden', selectedTower === null)
 
-  buyTowerButton.disabled = player.gold < towerCost || towerPlacementMode
+  buyTowerButton.disabled =
+    player.gold < towerDefinitions.tacoTruck.cost || towerPlacementMode
+  buySpireButton.disabled =
+    player.gold < towerDefinitions.spireTower.cost || towerPlacementMode
 
   if (towerPlacementMode) {
-    buyTowerButton.textContent = 'Placing Taco Truck...'
+    buyTowerButton.setAttribute('aria-label', 'Placing Taco Truck...')
+    buyTowerButton.title = 'Placing Taco Truck...'
+    buySpireButton.setAttribute('aria-label', 'Placing Tower Tower...')
+    buySpireButton.title = 'Placing Tower Tower...'
     upgradeDamageButton.disabled = true
     upgradeRangeButton.disabled = true
     upgradeSpeedButton.disabled = true
     sellTowerButton.disabled = true
-    shopMessage.textContent = 'Click on the grass to place your taco truck.'
+    shopMessage.textContent = ''
+    towerStats.textContent = `Placing ${activeTowerDefinition.name.toLowerCase()}: damage ${activeTowerDefinition.damage}, range ${activeTowerDefinition.range}, ${(
+      1 / activeTowerDefinition.reloadTime
+    ).toFixed(2)} shots/sec.`
     return
   }
 
   if (selectedTower) {
-    const damageUpgradeCost = getUpgradeCost(selectedTower.damageLevel)
-    const rangeUpgradeCost = getUpgradeCost(selectedTower.rangeLevel)
-    const speedUpgradeCost = getUpgradeCost(selectedTower.speedLevel)
-    const speedText = (1 / selectedTower.reloadTime).toFixed(2)
-    const damageMaxed = selectedTower.damageLevel >= maximumDamageUpgrades
-    const rangeMaxed = selectedTower.rangeLevel >= maximumRangeUpgrades
-    const speedMaxed = selectedTower.speedLevel >= maximumSpeedUpgrades
+    const selectedTowerDefinition = getTowerDefinition(selectedTower.type)
+    const damageUpgrade = getUpgradeOption(
+      selectedTowerDefinition,
+      'damage',
+      selectedTower.damageLevel,
+    )
+    const rangeUpgrade = getUpgradeOption(
+      selectedTowerDefinition,
+      'range',
+      selectedTower.rangeLevel,
+    )
+    const speedUpgrade = getUpgradeOption(
+      selectedTowerDefinition,
+      'speed',
+      selectedTower.speedLevel,
+    )
+    const damageMaxed = damageUpgrade.amount === undefined || damageUpgrade.cost === undefined
+    const rangeMaxed = rangeUpgrade.amount === undefined || rangeUpgrade.cost === undefined
+    const speedMaxed = speedUpgrade.amount === undefined || speedUpgrade.cost === undefined
 
     upgradeDamageButton.textContent = damageMaxed
       ? 'Damage Maxed'
-      : `Damage +${towerDamageUpgradeAmount} (${damageUpgradeCost} Gold)`
+      : `Damage +${damageUpgrade.amount} (${damageUpgrade.cost} Gold)`
     upgradeRangeButton.textContent = rangeMaxed
       ? 'Range Maxed'
-      : `Range +${towerRangeUpgradeAmount} (${rangeUpgradeCost} Gold)`
+      : `Range +${rangeUpgrade.amount} (${rangeUpgrade.cost} Gold)`
     upgradeSpeedButton.textContent = speedMaxed
       ? 'Speed Maxed'
-      : `Speed Up (${speedUpgradeCost} Gold)`
+      : `Speed +${speedUpgrade.amount.toFixed(2)} (${speedUpgrade.cost} Gold)`
     sellTowerButton.textContent = `Sell Truck (+${Math.floor(selectedTower.goldSpent * 0.5)} Gold)`
-    upgradeDamageButton.disabled = damageMaxed || player.gold < damageUpgradeCost
-    upgradeRangeButton.disabled = rangeMaxed || player.gold < rangeUpgradeCost
+    upgradeDamageButton.disabled = damageMaxed || player.gold < damageUpgrade.cost
+    upgradeRangeButton.disabled = rangeMaxed || player.gold < rangeUpgrade.cost
     upgradeSpeedButton.disabled =
       speedMaxed ||
-      player.gold < speedUpgradeCost ||
+      player.gold < speedUpgrade.cost ||
       selectedTower.reloadTime <= minimumTowerReloadTime
     sellTowerButton.disabled = false
-    shopMessage.textContent =
-      `Selected taco truck: ${selectedTower.damage} damage, ${selectedTower.range} range, ${speedText} shots/sec.`
+    shopMessage.textContent = ''
+    towerStats.textContent = `Selected ${selectedTowerDefinition.name.toLowerCase()}: damage ${selectedTower.damage}, range ${selectedTower.range}, ${(1 / selectedTower.reloadTime).toFixed(2)} shots/sec.`
     return
   }
 
-  buyTowerButton.textContent = `Buy Taco Truck (${towerCost} Gold)`
-  if (player.gold < towerCost) {
-    shopMessage.textContent = 'You need more gold to buy another taco truck.'
+  buyTowerButton.setAttribute('aria-label', towerDefinitions.tacoTruck.ariaLabel)
+  buyTowerButton.title = towerDefinitions.tacoTruck.ariaLabel
+  buySpireButton.setAttribute('aria-label', towerDefinitions.spireTower.ariaLabel)
+  buySpireButton.title = towerDefinitions.spireTower.ariaLabel
+  if (player.gold < towerDefinitions.tacoTruck.cost && player.gold < towerDefinitions.spireTower.cost) {
+    shopMessage.textContent = ''
+    towerStats.textContent = getTowerStatsText('tacoTruck')
     return
   }
 
-  shopMessage.textContent = 'Buy a taco truck, then click the grass to place it.'
+  shopMessage.textContent = ''
+  towerStats.textContent = towerPlacementMode
+    ? getTowerStatsText(towerPlacementType)
+    : getTowerStatsText('tacoTruck')
+}
+
+function updateDevConsoleUi() {
+  devConsole.classList.toggle('hidden', !devConsoleVisible)
+  consoleToggleButton.textContent = devConsoleVisible ? 'Close Console' : 'Console'
+}
+
+function setConsoleStatus(message: string) {
+  devConsoleOutput.textContent = message
+}
+
+function applyConsoleCommand(rawCommand: string) {
+  const command = rawCommand.trim()
+
+  if (!command) {
+    setConsoleStatus('Enter a command like lives = 50, gold = 1000, or game_speed = 1.5.')
+    return
+  }
+
+  const match = command.match(
+    /^(lives|gold|wave|game_speed)\s*=\s*(-?\d+(?:\.\d+)?)$/i,
+  )
+
+  if (!match) {
+    setConsoleStatus(
+      'Unknown command. Use lives = x, gold = x, wave = x, or game_speed = x.',
+    )
+    return
+  }
+
+  const key = match[1].toLowerCase()
+  const value = Number(match[2])
+
+  if (!Number.isFinite(value)) {
+    setConsoleStatus('That value is not a valid number.')
+    return
+  }
+
+  if (key === 'lives') {
+    player.lives = Math.max(0, Math.floor(value))
+    updateLivesDisplay()
+    setConsoleStatus(`Lives set to ${player.lives}.`)
+    return
+  }
+
+  if (key === 'gold') {
+    player.gold = Math.max(0, Math.floor(value))
+    updateGoldDisplay()
+    updateShopUi()
+    setConsoleStatus(`Gold set to ${player.gold}.`)
+    return
+  }
+
+  if (key === 'wave') {
+    currentWaveIndex = Math.max(0, Math.min(waves.length - 1, Math.floor(value) - 1))
+    enemies.length = 0
+    projectiles.length = 0
+    explosions.length = 0
+    enemiesSpawnedThisWave = 0
+    spawnTimer = 0
+    waveDelayTimer = waveDelay
+    updateWaveDisplay()
+    createEnemy()
+    setConsoleStatus(`Wave set to ${currentWaveIndex + 1}.`)
+    return
+  }
+
+  if (key === 'game_speed') {
+    gameSpeedMultiplier = Math.min(maximumGameSpeed, Math.max(minimumGameSpeed, value))
+    updateGameSpeedButtons()
+    setConsoleStatus(`Game speed set to ${gameSpeedMultiplier.toFixed(2)}x.`)
+  }
 }
 
 function distanceToLineSegment(
@@ -642,11 +880,12 @@ function isPointOnPath(pointX: number, pointY: number) {
 }
 
 function isPointInsideBoard(pointX: number, pointY: number) {
+  const towerDefinition = getTowerDefinition(towerPlacementType)
   return (
-    pointX > tacoTruckSpriteWidth / 2 + towerPlacementEdgePadding &&
-    pointX < canvas.width - tacoTruckSpriteWidth / 2 - towerPlacementEdgePadding &&
-    pointY > tacoTruckSpriteHeight / 2 + towerPlacementEdgePadding &&
-    pointY < canvas.height - tacoTruckSpriteHeight / 2 - towerPlacementEdgePadding
+    pointX > towerDefinition.spriteWidth / 2 + towerPlacementEdgePadding &&
+    pointX < canvas.width - towerDefinition.spriteWidth / 2 - towerPlacementEdgePadding &&
+    pointY > towerDefinition.spriteHeight / 2 + towerPlacementEdgePadding &&
+    pointY < canvas.height - towerDefinition.spriteHeight / 2 - towerPlacementEdgePadding
   )
 }
 
@@ -666,15 +905,22 @@ function isValidTowerPlacement(pointX: number, pointY: number) {
 
 function getClickedTowerIndex(pointX: number, pointY: number) {
   return towers.findIndex(
-    (tower) =>
-      pointX >= tower.x - tacoTruckSpriteWidth / 2 &&
-      pointX <= tower.x + tacoTruckSpriteWidth / 2 &&
-      pointY >= tower.y - tacoTruckSpriteHeight / 2 &&
-      pointY <= tower.y + tacoTruckSpriteHeight / 2,
+    (tower) => {
+      const towerDefinition = getTowerDefinition(tower.type)
+
+      return (
+        pointX >= tower.x - towerDefinition.spriteWidth / 2 &&
+        pointX <= tower.x + towerDefinition.spriteWidth / 2 &&
+        pointY >= tower.y - towerDefinition.spriteHeight / 2 &&
+        pointY <= tower.y + towerDefinition.spriteHeight / 2
+      )
+    },
   )
 }
 
 function placeTower(pointX: number, pointY: number) {
+  const towerDefinition = getTowerDefinition(towerPlacementType)
+
   if (!isPointInsideBoard(pointX, pointY)) {
     shopMessage.textContent = 'Place the taco truck inside the map.'
     return
@@ -691,21 +937,50 @@ function placeTower(pointX: number, pointY: number) {
   }
 
   towers.push({
+    type: towerPlacementType,
     x: pointX,
     y: pointY,
     radius: 20,
-    range: towerRange,
-    damage: tacoDamage,
-    reloadTime: towerReloadTime,
+    range: towerDefinition.range,
+    damage: towerDefinition.damage,
+    reloadTime: towerDefinition.reloadTime,
     cooldown: 0,
     damageLevel: 0,
     rangeLevel: 0,
     speedLevel: 0,
-    goldSpent: towerCost,
+    goldSpent: towerDefinition.cost,
   })
   selectedTowerIndex = towers.length - 1
   towerPlacementMode = false
   placementPreview.isValid = false
+  updateShopUi()
+}
+
+function cancelTowerPlacement() {
+  if (!towerPlacementMode) {
+    return
+  }
+
+  towerPlacementMode = false
+  placementPreview.isValid = false
+  player.gold += getTowerDefinition(towerPlacementType).cost
+  updateGoldDisplay()
+  updateShopUi()
+}
+
+function startTowerPlacement(towerType: TowerType) {
+  const towerDefinition = getTowerDefinition(towerType)
+
+  if (player.gold < towerDefinition.cost || towerPlacementMode) {
+    return
+  }
+
+  selectedTowerIndex = null
+  player.gold -= towerDefinition.cost
+  towerPlacementMode = true
+  towerPlacementType = towerType
+  placementPreview.isValid = false
+  updateGoldDisplay()
   updateShopUi()
 }
 
@@ -744,6 +1019,8 @@ function updateEnemySpawns(deltaTime: number) {
 
 function updateTowers(deltaTime: number) {
   towers.forEach((tower) => {
+    const towerDefinition = getTowerDefinition(tower.type)
+
     if (tower.cooldown > 0) {
       tower.cooldown -= deltaTime
     }
@@ -756,9 +1033,10 @@ function updateTowers(deltaTime: number) {
       projectiles.push({
         x: tower.x,
         y: tower.y,
-        speed: tacoSpeed,
+        speed: towerDefinition.projectileSpeed,
         damage: tower.damage,
         targetEnemyId: targetEnemy.id,
+        sourceTowerType: tower.type,
       })
       tower.cooldown = tower.reloadTime
     }
@@ -789,8 +1067,10 @@ function updateProjectiles(deltaTime: number) {
         y: projectile.y,
         radius: 30,
         maxRadius: 30,
-        timeLeft: 1,
-        duration: 1,
+        timeLeft: projectile.sourceTowerType === 'spireTower' ? towerTowerExplosionDuration : 1,
+        duration:
+          projectile.sourceTowerType === 'spireTower' ? towerTowerExplosionDuration : 1,
+        sourceTowerType: projectile.sourceTowerType,
       })
       damageEnemy(projectile.targetEnemyId, projectile.damage)
       applySplashDamage(
@@ -887,6 +1167,11 @@ function drawScene() {
   drawBackground()
 
   towers.forEach((tower, index) => {
+    const towerDefinition = getTowerDefinition(tower.type)
+    const towerSprite = tower.type === 'spireTower' ? spireTowerImage : tacoTruckImage
+    const towerSpriteLoaded =
+      tower.type === 'spireTower' ? spireTowerImageLoaded : tacoTruckImageLoaded
+
     if (selectedTowerIndex === index) {
       gameContext.strokeStyle = 'rgba(116, 220, 255, 0.45)'
       gameContext.lineWidth = 5
@@ -895,13 +1180,13 @@ function drawScene() {
       gameContext.stroke()
     }
 
-    if (tacoTruckImageLoaded) {
+    if (towerSpriteLoaded) {
       gameContext.drawImage(
-        tacoTruckImage,
-        tower.x - tacoTruckSpriteWidth / 2,
-        tower.y - tacoTruckSpriteHeight / 2,
-        tacoTruckSpriteWidth,
-        tacoTruckSpriteHeight,
+        towerSprite,
+        tower.x - towerDefinition.spriteWidth / 2,
+        tower.y - towerDefinition.spriteHeight / 2,
+        towerDefinition.spriteWidth,
+        towerDefinition.spriteHeight,
       )
     } else {
       gameContext.fillStyle = '#7f5a38'
@@ -922,19 +1207,31 @@ function drawScene() {
       : 'rgba(236, 67, 67, 0.95)'
     gameContext.lineWidth = 5
     gameContext.beginPath()
-    gameContext.arc(placementPreview.x, placementPreview.y, towerRange, 0, Math.PI * 2)
+    gameContext.arc(
+      placementPreview.x,
+      placementPreview.y,
+      getTowerDefinition(towerPlacementType).range,
+      0,
+      Math.PI * 2,
+    )
     gameContext.stroke()
 
     gameContext.save()
     gameContext.globalAlpha = placementPreview.isValid ? 1 : 0.45
 
-    if (tacoTruckImageLoaded) {
+    const towerDefinition = getTowerDefinition(towerPlacementType)
+    const towerSprite =
+      towerPlacementType === 'spireTower' ? spireTowerImage : tacoTruckImage
+    const towerSpriteLoaded =
+      towerPlacementType === 'spireTower' ? spireTowerImageLoaded : tacoTruckImageLoaded
+
+    if (towerSpriteLoaded) {
       gameContext.drawImage(
-        tacoTruckImage,
-        placementPreview.x - tacoTruckSpriteWidth / 2,
-        placementPreview.y - tacoTruckSpriteHeight / 2,
-        tacoTruckSpriteWidth,
-        tacoTruckSpriteHeight,
+        towerSprite,
+        placementPreview.x - towerDefinition.spriteWidth / 2,
+        placementPreview.y - towerDefinition.spriteHeight / 2,
+        towerDefinition.spriteWidth,
+        towerDefinition.spriteHeight,
       )
     } else {
       gameContext.fillStyle = '#7f5a38'
@@ -947,7 +1244,15 @@ function drawScene() {
   }
 
   for (const projectile of projectiles) {
-    if (tacoImageLoaded) {
+    if (projectile.sourceTowerType === 'spireTower' && towerTowerProjectileImageLoaded) {
+      gameContext.drawImage(
+        towerTowerProjectileImage,
+        projectile.x - 18,
+        projectile.y - 18,
+        36,
+        36,
+      )
+    } else if (tacoImageLoaded) {
       gameContext.drawImage(tacoImage, projectile.x - 20, projectile.y - 14, 40, 28)
     } else {
       gameContext.fillStyle = '#f0c36b'
@@ -1000,7 +1305,18 @@ function drawScene() {
   for (const explosion of explosions) {
     const alpha = explosion.timeLeft / explosion.duration
 
-    if (explosionImageLoaded) {
+    if (explosion.sourceTowerType === 'spireTower' && towerTowerExplosionImageLoaded) {
+      gameContext.save()
+      gameContext.globalAlpha = alpha
+      gameContext.drawImage(
+        towerTowerExplosionImage,
+        explosion.x - explosion.radius * towerTowerExplosionDrawScale / 2,
+        explosion.y - explosion.radius * towerTowerExplosionDrawScale / 2 - 22,
+        explosion.radius * towerTowerExplosionDrawScale,
+        explosion.radius * towerTowerExplosionDrawScale,
+      )
+      gameContext.restore()
+    } else if (explosionImageLoaded) {
       gameContext.save()
       gameContext.globalAlpha = alpha
       gameContext.drawImage(
@@ -1029,10 +1345,12 @@ function drawScene() {
     gameContext.fillRect(0, 0, canvas.width, canvas.height)
 
     gameContext.fillStyle = '#fff7e6'
+    gameContext.textAlign = 'center'
     gameContext.font = 'bold 46px sans-serif'
-    gameContext.fillText('Game Over', 270, 200)
+    gameContext.fillText('Game Over', canvas.width / 2, 200)
     gameContext.font = '24px sans-serif'
-    gameContext.fillText('Refresh after you add towers.', 248, 245)
+    gameContext.fillText('Refresh after you add towers.', canvas.width / 2, 245)
+    gameContext.textAlign = 'start'
   }
 }
 
@@ -1053,16 +1371,11 @@ function gameLoop(currentTime: number) {
 }
 
 buyTowerButton.addEventListener('click', () => {
-  if (player.gold < towerCost || towerPlacementMode) {
-    return
-  }
+  startTowerPlacement('tacoTruck')
+})
 
-  selectedTowerIndex = null
-  player.gold -= towerCost
-  towerPlacementMode = true
-  placementPreview.isValid = false
-  updateGoldDisplay()
-  updateShopUi()
+buySpireButton.addEventListener('click', () => {
+  startTowerPlacement('spireTower')
 })
 
 upgradeDamageButton.addEventListener('click', () => {
@@ -1071,16 +1384,17 @@ upgradeDamageButton.addEventListener('click', () => {
   }
 
   const tower = towers[selectedTowerIndex]
-  const upgradeCost = getUpgradeCost(tower?.damageLevel ?? 0)
+  const towerDefinition = getTowerDefinition(tower?.type ?? 'tacoTruck')
+  const upgrade = getUpgradeOption(towerDefinition, 'damage', tower?.damageLevel ?? 0)
 
-  if (!tower || player.gold < upgradeCost || tower.damageLevel >= maximumDamageUpgrades) {
+  if (!tower || upgrade.amount === undefined || upgrade.cost === undefined || player.gold < upgrade.cost) {
     return
   }
 
-  player.gold -= upgradeCost
-  tower.damage += towerDamageUpgradeAmount
+  player.gold -= upgrade.cost
+  tower.damage += upgrade.amount
   tower.damageLevel += 1
-  tower.goldSpent += upgradeCost
+  tower.goldSpent += upgrade.cost
   updateGoldDisplay()
   updateShopUi()
 })
@@ -1091,16 +1405,17 @@ upgradeRangeButton.addEventListener('click', () => {
   }
 
   const tower = towers[selectedTowerIndex]
-  const upgradeCost = getUpgradeCost(tower?.rangeLevel ?? 0)
+  const towerDefinition = getTowerDefinition(tower?.type ?? 'tacoTruck')
+  const upgrade = getUpgradeOption(towerDefinition, 'range', tower?.rangeLevel ?? 0)
 
-  if (!tower || player.gold < upgradeCost || tower.rangeLevel >= maximumRangeUpgrades) {
+  if (!tower || upgrade.amount === undefined || upgrade.cost === undefined || player.gold < upgrade.cost) {
     return
   }
 
-  player.gold -= upgradeCost
-  tower.range += towerRangeUpgradeAmount
+  player.gold -= upgrade.cost
+  tower.range += upgrade.amount
   tower.rangeLevel += 1
-  tower.goldSpent += upgradeCost
+  tower.goldSpent += upgrade.cost
   updateGoldDisplay()
   updateShopUi()
 })
@@ -1111,21 +1426,33 @@ upgradeSpeedButton.addEventListener('click', () => {
   }
 
   const tower = towers[selectedTowerIndex]
-  const upgradeCost = getUpgradeCost(tower?.speedLevel ?? 0)
+  const towerDefinition = getTowerDefinition(tower?.type ?? 'tacoTruck')
+  const upgrade = getUpgradeOption(towerDefinition, 'speed', tower?.speedLevel ?? 0)
 
   if (
     !tower ||
-    player.gold < upgradeCost ||
-    tower.reloadTime <= minimumTowerReloadTime ||
-    tower.speedLevel >= maximumSpeedUpgrades
+    upgrade.amount === undefined ||
+    upgrade.cost === undefined ||
+    player.gold < upgrade.cost
   ) {
     return
   }
 
-  player.gold -= upgradeCost
-  tower.reloadTime = Math.max(minimumTowerReloadTime, tower.reloadTime - towerSpeedUpgradeAmount)
+  player.gold -= upgrade.cost
+  if (towerDefinition.speedMode === 'shotsPerSecond') {
+    const currentShotsPerSecond = 1 / tower.reloadTime
+    tower.reloadTime = Math.max(
+      minimumTowerReloadTime,
+      1 / (currentShotsPerSecond + upgrade.amount),
+    )
+  } else {
+    tower.reloadTime = Math.max(
+      minimumTowerReloadTime,
+      tower.reloadTime - upgrade.amount,
+    )
+  }
   tower.speedLevel += 1
-  tower.goldSpent += upgradeCost
+  tower.goldSpent += upgrade.cost
   updateGoldDisplay()
   updateShopUi()
 })
@@ -1150,31 +1477,25 @@ sellTowerButton.addEventListener('click', () => {
   updateShopUi()
 })
 
-cheatLivesButton.addEventListener('click', () => {
-  player.lives += 1000
-  updateLivesDisplay()
+consoleToggleButton.addEventListener('click', () => {
+  devConsoleVisible = !devConsoleVisible
+  updateDevConsoleUi()
+  if (devConsoleVisible) {
+    devConsoleInput.focus()
+  }
 })
 
-cheatGoldButton.addEventListener('click', () => {
-  player.gold += 1000
-  updateGoldDisplay()
-  updateShopUi()
+devConsoleRunButton.addEventListener('click', () => {
+  applyConsoleCommand(devConsoleInput.value)
 })
 
-slowGameButton.addEventListener('click', () => {
-  gameSpeedMultiplier = Math.max(
-    minimumGameSpeed,
-    gameSpeedMultiplier - gameSpeedStep,
-  )
-  updateGameSpeedButtons()
-})
+devConsoleInput.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') {
+    return
+  }
 
-fastGameButton.addEventListener('click', () => {
-  gameSpeedMultiplier = Math.min(
-    maximumGameSpeed,
-    gameSpeedMultiplier + gameSpeedStep,
-  )
-  updateGameSpeedButtons()
+  event.preventDefault()
+  applyConsoleCommand(devConsoleInput.value)
 })
 
 canvas.addEventListener('click', (event) => {
@@ -1214,10 +1535,20 @@ canvas.addEventListener('mousemove', (event) => {
   placementPreview.isValid = isValidTowerPlacement(hoverX, hoverY)
 })
 
+canvas.addEventListener('contextmenu', (event) => {
+  if (!towerPlacementMode) {
+    return
+  }
+
+  event.preventDefault()
+  cancelTowerPlacement()
+})
+
 drawScene()
 updateLivesDisplay()
 updateGoldDisplay()
 updateShopUi()
 updateGameSpeedButtons()
+updateDevConsoleUi()
 createEnemy()
 requestAnimationFrame(gameLoop)

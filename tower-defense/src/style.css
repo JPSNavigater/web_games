@@ -119,6 +119,40 @@ select {
   cursor: pointer;
 }
 
+.buy-tower-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  min-height: 58px;
+  padding: 8px 12px;
+}
+
+.buy-spire-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  min-height: 58px;
+  padding: 8px 12px;
+}
+
+.buy-tower-icon {
+  display: block;
+  width: 60px;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.buy-spire-icon {
+  display: block;
+  width: 22px;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
 .shop-button:disabled {
   background: #b7a897;
   cursor: not-allowed;
@@ -134,7 +168,18 @@ select {
 
 .shop-message {
   margin: 0;
-  color: #5b5348;
+}
+
+.shop-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tower-stats {
+  margin: 0;
+  color: #3e4e59;
+  font-size: 0.9rem;
 }
 
 .utility-controls {
@@ -155,6 +200,49 @@ select {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(47, 111, 85, 0.22);
+}
+
+.dev-console {
+  position: absolute;
+  right: 0;
+  bottom: 48px;
+  width: min(300px, calc(100vw - 48px));
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(20, 28, 36, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 28px rgba(20, 28, 36, 0.28);
+}
+
+.dev-console-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dev-console-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7fff8;
+  outline: none;
+}
+
+.dev-console-input::placeholder {
+  color: rgba(247, 255, 248, 0.55);
+}
+
+.dev-console-run {
+  padding: 10px 14px;
+  background: #2f5c90;
+}
+
+.dev-console-output {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #dbe6ef;
 }
 
 @media (max-width: 900px) {
